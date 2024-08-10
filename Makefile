@@ -110,8 +110,27 @@ define TRY_TO_MATCH_RULE_FROM_LIST_HELPER
     endif
 endef
 
+define TRY_TO_MATCH_RULE_FROM_LIST_HELPER_KB
+    # Split on ":", padding with empty strings to avoid indexing issues
+    TOKEN1:=$$(shell python3 -c "import sys; print((sys.argv[1].split(':',1)+[''])[0])" $$(RULE))
+    TOKENr:=$$(shell python3 -c "import sys; print((sys.argv[1].split(':',1)+[''])[1])" $$(RULE))
+
+    TOKEN1:=$$(shell $(QMK_BIN) resolve-alias $$(TOKEN1))
+
+    FOUNDx:=$$(shell echo $1 | tr " " "\n" | grep -Fx $$(TOKEN1))
+    ifneq ($$(FOUNDx),)
+        RULE := $$(TOKENr)
+        RULE_FOUND := true
+        MATCHED_ITEM := $$(TOKEN1)
+    else
+        RULE_FOUND := false
+        MATCHED_ITEM :=
+    endif
+endef
+
 # Make it easier to call TRY_TO_MATCH_RULE_FROM_LIST
 TRY_TO_MATCH_RULE_FROM_LIST = $(eval $(call TRY_TO_MATCH_RULE_FROM_LIST_HELPER,$1))$(RULE_FOUND)
+TRY_TO_MATCH_RULE_FROM_LIST_KB = $(eval $(call TRY_TO_MATCH_RULE_FROM_LIST_HELPER_KB,$1))$(RULE_FOUND)
 
 define ALL_IN_LIST_LOOP
     OLD_RULE$1 := $$(RULE)
@@ -138,7 +157,7 @@ define PARSE_RULE
         $$(eval $$(call PARSE_TEST))
     # If the rule starts with the name of a known keyboard, then continue
     # the parsing from PARSE_KEYBOARD
-    else ifeq ($$(call TRY_TO_MATCH_RULE_FROM_LIST,$$(shell $(QMK_BIN) list-keyboards)),true)
+    else ifeq ($$(call TRY_TO_MATCH_RULE_FROM_LIST_KB,$$(shell $(QMK_BIN) list-keyboards)),true)
         KEYBOARD_RULE=$$(MATCHED_ITEM)
         $$(eval $$(call PARSE_KEYBOARD,$$(MATCHED_ITEM)))
     else
